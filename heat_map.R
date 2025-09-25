@@ -110,7 +110,7 @@ ggplot(results, aes(x = P1, y = P2, fill = CM1_final)) +
   scale_fill_viridis_c(name = "final CM1 [mol/L]") +
   labs(
     title = "Heatmap: CM1 vs P1 & P2 (0.5–5 mol/L)",
-    x = "P1 initial (mol/L)",
-    y = "P2 initial (mol/L)"
+    x = "X1  (g/L)",
+    y = "X2  (g/L)"
   ) +
   theme_minimal()
