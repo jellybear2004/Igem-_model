@@ -1,4 +1,3 @@
-{r}
 # === Load required libraries ===
 packages <- c("ggplot2", "dplyr", "tidyr")
 new_packages <- packages[!(packages %in% installed.packages()[, "Package"])]
@@ -7,138 +6,19 @@ lapply(packages, library, character.only = TRUE)
 
 # === 1. Simulation function === 
 simulate_CM1 <- function(X1_init, X2_init, dt = 0.001, t_end = 3) {
-  
-  mu_max1 <- 1.1
-  Ks1 <- 0.7
-  Y1 <- 0.8
-  alpha1 <- 0.40
-  
-  mu_max2 <- 1.99
-  Ks2 <- 0.486
-  Y2 <- 0.63
-  alpha2 <- 0.00252
-  
-  kf <- 760 # doit être en L/(mol*s), voir papier bench : en L/(mol*h) = 2736000
-  masse_molaire_P1 = 14000 # Da => to check !!!
-  masse_molaire_P2 =  12460 # Da => to check !!!
-  masse_molaire_C = masse_molaire_P1+masse_molaire_P2
-  
-  kon_1 <- 10^9 
-  koff_1 <- 0.05 
-  aff_1 <- 10^-6
-  
-  gamma = 4
-
-  #Environement A
-  # Time settings
-  dt_A <- 0.01
-  t_end_A <- 48
-  times_A <- seq(0, t_end_A, by = dt_A)
-  n_steps_A <- length(times_A)
-
-  # Create storage dataframe
-  dfA <- data.frame(
-    time = times_A,
-    X1 = numeric(n_steps_A),    # biomass A [g/L] (nombre de bactéries)
-    S1 = numeric(n_steps_A),    # substrate A [g/L]
-    P1 = numeric(n_steps_A)    # protein P1 [g/L] = curli
-  )
-
-  # Initial conditions
-  dfA$X1[1] <- X1_init 
-  dfA$S1[1] <- 2
-  dfA$P1[1] <- 0.0
-
-  # Simulation loop
-  for (i in 1:(n_steps_A - 1)) {
-    # Extract current values
-    X1 <- dfA$X1[i] 
-    S1 <- dfA$S1[i]
-    P1 <- dfA$P1[i]
-
-
-   # --- Growth ---
-   mu1 <- mu_max1 * (S1 / (Ks1 + S1))
-    dX1 <-  mu1 * X1 
-    dS1 <- (-1/Y1 * mu1) * X1
-
-    # --- Protein production ---
-    if (dfA$time[i]>2){
-     if (X1-dfA$X1[i-1]==dfA$X1[i-1]-dfA$X1[i-2]){
-       dP1 <- alpha1 * X1
-     }
-     else{
-        dP1 = 0
-      }
-    }
-   else{
-     dP1 = 0
-   }
-
-    # --- Euler update ---
-   dfA$X1[i+1]    <- max(X1 + dX1 * dt_A,0)
-    dfA$S1[i+1]    <- max(S1 + dS1 * dt_A,0)
-    dfA$P1[i+1]    <- max(P1 + dP1 * dt_A,0)
-  }
-
-  # Environnement B
-  # Time settings
-  dt_B <- 0.01
-  t_end_B <- 24
-  times_B <- seq(0, t_end_B, by = dt_B)
-  n_steps_B <- length(times_B)
-
-  # Create storage dataframe
-  dfB = data.frame(
-    time = times_B,
-   X2 = numeric(n_steps_B),     # biomass B [g/L]
-   S2 = numeric(n_steps_B),     # substrate B [g/L]
-   mu = numeric(n_steps_B),     # 
-   P2 = numeric(n_steps_B)     # protein P2 [g/L] = binding protein
-  )
-
-  # Initial conditions
-  dfB$X2[1] <- X2_init 
-  dfB$S2[1] <- 2
-  dfB$P2[1] <- 0.0
-
-
-  # Simulation loop
-  for (i in 1:(n_steps_B - 1)) {
-    # Extract current values
-    X2 <- dfB$X2[i]
-    S2 <- dfB$S2[i] 
-    P2 <- dfB$P2[i]
-
-    # --- Growth ---
-    dfB$mu[i] <- mu_max2 * (S2 / (Ks2 + S2))
-    mu2=dfB$mu[i]
-    dX2 <-  mu2 * X2 
-    dS2 <- (-1/Y2 * mu2) * X2
-
-    # --- Protein production ---
-    #dP2 <- if (mu2 > mu_min) alpha2 * X2 - delta2 * P2 else -delta2 * P2
-    if (dfB$time[i] >2){
-     dP2 <- if (X2-dfB$X2[i-1]-(dfB$X2[i-1]-dfB$X2[i-2])>0) alpha2 * X2  else 0
-    }
-    else{
-      dP2 = alpha2 * X2 
-    }
-
-    # --- Euler update ---
-    dfB$X2[i+1]    <- X2 + dX2 * dt_B
-    dfB$S2[i+1]    <- S2 + dS2 * dt_B
-    dfB$P2[i+1]    <- P2 + dP2 * dt_B
-  }
-  
   # === Phase C: formation du curli ===
   dt_C <- 0.001
-  t_end_C <- 3.0
+  t_end_C <- 5.0
   times_C <- seq(0, t_end_C, by = dt_C)
   n_steps_C <- length(times_C)
 
   # Constantes
-  
+  kf <- 760  # L/(mol*s)
+  masse_molaire_P1 <- 14000
+  masse_molaire_P2 <- 12460
+  masse_molaire_C <- masse_molaire_P1 + masse_molaire_P2
+  alpha1 <-0.40
+  alpha2 <-0.00252
 
   # Initialisation
   dfC <- data.frame(
@@ -147,9 +27,8 @@ simulate_CM1 <- function(X1_init, X2_init, dt = 0.001, t_end = 3) {
     P2 = numeric(n_steps_C),
     C  = numeric(n_steps_C)
   )
-  
-  dfC$P1[1] <- dfA$P1[n_steps_A] / masse_molaire_P1
-  dfC$P2[1] <- dfB$P2[n_steps_B] / masse_molaire_P2
+  dfC$P1[1] <- (X1_init*alpha1) / masse_molaire_P1
+  dfC$P2[1] <- (X2_init*alpha2) / masse_molaire_P2
   dfC$C[1]  <- 0
 
   # Simulation Phase C
@@ -173,6 +52,11 @@ simulate_CM1 <- function(X1_init, X2_init, dt = 0.001, t_end = 3) {
   times_D <- seq(0, t_end_D, by = dt_D)
   n_steps_D <- length(times_D)
 
+  # Paramètres cinétiques
+  kon_1  <- 1e9       # L/(mol*s) — réduit pour stabilité numérique
+  koff_1 <- 0.05      # 1/s
+  gamma  <- 4         # facteur correction
+
   # Initialisation
   df2 <- data.frame(
     time = times_D,
@@ -195,9 +79,9 @@ simulate_CM1 <- function(X1_init, X2_init, dt = 0.001, t_end = 3) {
     M1  <- df2$M1[i]
     CM1 <- df2$CM1[i]
 
-    dM1  <- koff_1 * CM1 - kon_1 * C * M1 * gamma * (M1 / (M1 + aff_1))
+    dM1  <- koff_1 * CM1 - kon_1 * C * M1 * gamma 
     dCM1 <- -dM1  # conservation
-    dC   <- koff_1 * CM1 / gamma - kon_1 * C * M1 * (M1 / (M1 + aff_1))
+    dC   <- koff_1 * CM1 / gamma - kon_1 * C * M1 
 
     df2$M1[i + 1]  <- max(M1  + dM1  * dt_D, 0)
     df2$CM1[i + 1] <- max(CM1 + dCM1 * dt_D, 0)
@@ -209,12 +93,12 @@ simulate_CM1 <- function(X1_init, X2_init, dt = 0.001, t_end = 3) {
 }
 
 # === 2. Exécuter la grille de simulations ===
-P1_vals <- seq(1, 10, by = 1)
-P2_vals <- seq(9990, 10000, by = 1)
+P1_vals <- seq(0.5, 10, by = 0.5)
+P2_vals <- seq(0.5, 10, by = 0.5)
 
 results <- expand.grid(P1 = P1_vals, P2 = P2_vals) %>%
   rowwise() %>%
-  mutate(CM1_final = simulate_CM1(P1, P2, dt = 0.001, t_end = 0.5)) %>%
+  mutate(CM1_final = simulate_CM1(P1, P2, dt = 0.001, t_end = 1)) %>%
   ungroup()
 
 # Nettoyer les NA (au cas où)
@@ -230,4 +114,3 @@ ggplot(results, aes(x = P1, y = P2, fill = CM1_final)) +
     y = "P2 initial (mol/L)"
   ) +
   theme_minimal()
-
